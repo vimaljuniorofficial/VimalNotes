@@ -2,6 +2,21 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8" />
+<script>
+  /* Compatibility shim for browser extensions attempting to intercept window.fetch */
+  (function () {
+    try {
+      var rawFetch = window.fetch;
+      var currentFetch = typeof rawFetch === 'function' ? rawFetch.bind(window) : rawFetch;
+      Object.defineProperty(window, 'fetch', {
+        get: function () { return currentFetch; },
+        set: function (fn) { currentFetch = fn; },
+        configurable: true,
+        enumerable: true
+      });
+    } catch (err) {}
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#f7f3ec" />
 <meta name="description" content="VimalNotes — a premium, minimal notes app with categories, pastel colors, pinning, favorites, archiving and dark mode." />
