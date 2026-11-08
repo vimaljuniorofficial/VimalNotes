@@ -1,4 +1,4 @@
-# NoteSpace — Your Thoughts, Organized
+# VimalNotes — Your Thoughts, Organized
 
 A minimal, premium notes application built with React 19, TypeScript, Vite, and Tailwind CSS. Featuring pastel color cards, rich text editing, category organization, pinning, favorites, archiving, dark mode, and LocalStorage persistence.
 
