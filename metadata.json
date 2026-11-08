@@ -1,5 +1,5 @@
 {
-  "name": "NoteSpace",
+  "name": "VimalNotes",
   "description": "A minimal, premium notes app with pastel cards, rich editing, categories, pinning, favorites, dark mode, and seamless Vercel deployment.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
