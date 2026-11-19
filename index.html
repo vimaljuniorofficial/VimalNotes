@@ -18,8 +18,8 @@
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#f7f3ec" />
-<meta name="description" content="VimalNotes — a premium, minimal notes app with categories, pastel colors, pinning, favorites, archiving and dark mode." />
-<title>VimalNotes</title>
+<meta name="description" content="Vimal Notes — a premium, minimal notes app with categories, pastel colors, pinning, favorites, archiving and dark mode." />
+<title>Vimal Notes</title>
 <link rel="icon" type="image/svg+xml" 
       href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%20viewBox='0%200%2016%2016'%3E%3Crect%20width='16'%20height='16'%20fill='%23000000'%20/%3E%3Cg%20transform='translate(2,2)%20scale(0.75)'%20fill='%23ffffff'%3E%3Cpath%20d='M5%2010.5a.5.5%200%200%201%20.5-.5h2a.5.5%200%200%201%200%201h-2a.5.5%200%200%201-.5-.5m0-2a.5.5%200%200%201%20.5-.5h5a.5.5%200%200%201%200%201h-5a.5.5%200%200%201-.5-.5m0-2a.5.5%200%200%201%20.5-.5h5a.5.5%200%200%201%200%201h-5a.5.5%200%200%201-.5-.5m0-2a.5.5%200%200%201%20.5-.5h5a.5.5%200%200%201%200%201h-5a.5.5%200%200%201-.5-.5'/%3E%3Cpath%20d='M3%200h10a2%202%200%200%201%202%202v12a2%202%200%200%201-2%202H3a2%202%200%200%201-2-2v-1h1v1a1%201%200%200%200%201%201h10a1%201%200%200%200%201-1V2a1%201%200%200%200-1-1H3a1%201%200%200%200-1%201v1H1V2a2%202%200%200%201%202-2'/%3E%3Cpath%20d='M1%205v-.5a.5.5%200%200%201%201%200V5h.5a.5.5%200%200%201%200%201h-2a.5.5%200%200%201%200-1zm0%203v-.5a.5.5%200%200%201%201%200V8h.5a.5.5%200%200%201%200%201h-2a.5.5%200%200%201%200-1zm0%203v-.5a.5.5%200%200%201%201%200v.5h.5a.5.5%200%200%201%200%201h-2a.5.5%200%200%201%200-1z'/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="apple-touch-icon" 
@@ -605,7 +605,7 @@ a{ color:inherit; }
     <div class="brand">
       <div class="brand-mark"><i class="bi bi-journal-text"></i></div>
       <div>
-        <div class="brand-name">VimalNotes</div>
+        <div class="brand-name">Vimal Notes</div>
         <div class="brand-tag">Your thoughts, organized</div>
       </div>
       <button class="drawer-close" id="drawerClose" type="button" aria-label="Close menu"><i class="bi bi-x-lg"></i></button>
@@ -637,7 +637,7 @@ a{ color:inherit; }
     <div class="mobile-bar">
       <button class="icon-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar"><i class="bi bi-list"></i></button>
       <div class="mobile-logo"><i class="bi bi-journal-text"></i></div>
-      <div class="brand-name" style="flex:1">VimalNotes</div>
+      <div class="brand-name" style="flex:1">Vimal Notes</div>
       <button class="icon-btn" id="mobileTheme" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
     </div>
 
@@ -875,7 +875,7 @@ a{ color:inherit; }
       const parsed = raw ? JSON.parse(raw) : [];
       state.notes = Array.isArray(parsed) ? parsed.filter(n => n && typeof n === 'object' && n.id).map(normalizeNote) : [];
     } catch (err) {
-      console.warn('VimalNotes: could not read storage —', err);
+      console.warn('Vimal Notes: could not read storage —', err);
       state.notes = [];
     }
   }
@@ -1326,6 +1326,8 @@ a{ color:inherit; }
     updateEditorDates(note);
     setSaveState('saved');
     savedRange = null;
+    lastFmtRange = null;
+    clearPendingFmt();
     updateFmtStates();
     el.editorOverlay.classList.add('open');
     lockScroll();
@@ -1376,6 +1378,8 @@ a{ color:inherit; }
     }
     state.editingId = null;
     savedRange = null;
+    lastFmtRange = null;
+    clearPendingFmt();
     $$('.fmt-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
     el.editorOverlay.classList.remove('open');
     unlockScroll();
@@ -1443,7 +1447,27 @@ a{ color:inherit; }
 
   /* Format toolbar (B / I / U / list) */
   let savedRange = null;
+  const FMT_CMDS = ['bold', 'italic', 'underline'];
+  const pendingFmt = { bold: null, italic: null, underline: null };
+  let lastFmtRange = null;
 
+  function clearPendingFmt() {
+    pendingFmt.bold = null;
+    pendingFmt.italic = null;
+    pendingFmt.underline = null;
+  }
+  function snapshotRange(r) {
+    if (!r) return null;
+    return {
+      sc: r.startContainer, so: r.startOffset,
+      ec: r.endContainer, eo: r.endOffset,
+      collapsed: r.collapsed
+    };
+  }
+  function sameRangeSnapshot(a, b) {
+    if (!a || !b) return false;
+    return a.sc === b.sc && a.so === b.so && a.ec === b.ec && a.eo === b.eo && a.collapsed === b.collapsed;
+  }
   function selectionInEditor() {
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return false;
@@ -1451,20 +1475,55 @@ a{ color:inherit; }
   }
   function saveSelection() {
     if (!selectionInEditor()) return;
-    try { savedRange = window.getSelection().getRangeAt(0).cloneRange(); } catch (err) {}
+    try {
+      const r = window.getSelection().getRangeAt(0).cloneRange();
+      savedRange = r;
+      lastFmtRange = snapshotRange(r);
+    } catch (err) {}
   }
   function restoreSelection() {
-    if (!savedRange) return;
+    if (!savedRange || !el.edBody.contains(savedRange.commonAncestorContainer)) return false;
     const sel = window.getSelection();
     try {
       sel.removeAllRanges();
       sel.addRange(savedRange);
-    } catch (err) {}
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  function hasAncestorTag(node, tags) {
+    let cur = node && node.nodeType === 3 ? node.parentElement : node;
+    while (cur && cur !== el.edBody) {
+      if (tags.includes(cur.tagName)) return true;
+      cur = cur.parentElement;
+    }
+    return false;
+  }
+  function isFmtActive(cmd) {
+    if (document.activeElement !== el.edBody || !selectionInEditor()) {
+      return false;
+    }
+    if (Object.prototype.hasOwnProperty.call(pendingFmt, cmd) && pendingFmt[cmd] !== null) {
+      return pendingFmt[cmd];
+    }
+    let on = false;
+    try { on = document.queryCommandState(cmd); } catch (err) { on = false; }
+    if (on) return true;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !el.edBody.contains(sel.anchorNode)) return false;
+    const tagMap = {
+      bold: ['B', 'STRONG'],
+      italic: ['I', 'EM'],
+      underline: ['U'],
+      insertUnorderedList: ['UL']
+    };
+    const tags = tagMap[cmd];
+    return tags ? hasAncestorTag(sel.anchorNode, tags) : false;
   }
   function updateFmtStates() {
     $$('.fmt-btn').forEach(btn => {
-      let on = false;
-      try { on = document.queryCommandState(btn.dataset.cmd); } catch (err) { on = false; }
+      const on = isFmtActive(btn.dataset.cmd);
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
@@ -1481,13 +1540,32 @@ a{ color:inherit; }
 
       if (!selectionInEditor()) {
         el.edBody.focus();
+        if (!restoreSelection()) {
+          placeCaretAtEnd(el.edBody);
+        }
+      } else if (document.activeElement !== el.edBody) {
+        saveSelection();
+        el.edBody.focus();
         restoreSelection();
       }
 
+      const cmd = btn.dataset.cmd;
+      const sel = window.getSelection();
+      const isCollapsed = !sel || !sel.rangeCount || sel.getRangeAt(0).collapsed;
+      const wasActive = isFmtActive(cmd);
+
       try { document.execCommand('styleWithCSS', false, false); } catch (err) {}
-      let ok = false;
-      try { ok = document.execCommand(btn.dataset.cmd, false, null); } catch (err) {}
-      void ok;
+      try { document.execCommand(cmd, false, null); } catch (err) {}
+
+      if (Object.prototype.hasOwnProperty.call(pendingFmt, cmd)) {
+        if (isCollapsed) {
+          pendingFmt[cmd] = !wasActive;
+        } else {
+          clearPendingFmt();
+        }
+      } else {
+        clearPendingFmt();
+      }
 
       saveSelection();
       updateFmtStates();
@@ -1496,12 +1574,58 @@ a{ color:inherit; }
     });
   });
 
+  el.edTitle.addEventListener('focus', () => {
+    clearPendingFmt();
+    updateFmtStates();
+  });
+  el.edBody.addEventListener('focus', () => {
+    updateFmtStates();
+  });
+
+  el.edBody.addEventListener('beforeinput', e => {
+    if (!state.editingId) return;
+    if (e.inputType === 'insertText' || e.inputType === 'insertCompositionText') {
+      FMT_CMDS.forEach(cmd => {
+        if (pendingFmt[cmd] !== null) {
+          let current = false;
+          try { current = document.queryCommandState(cmd); } catch (err) { current = false; }
+          if (current !== pendingFmt[cmd]) {
+            try { document.execCommand('styleWithCSS', false, false); } catch (err) {}
+            try { document.execCommand(cmd, false, null); } catch (err) {}
+          }
+        }
+      });
+    }
+  });
+  el.edBody.addEventListener('input', () => {
+    clearPendingFmt();
+    saveSelection();
+    updateFmtStates();
+  });
   el.edBody.addEventListener('keyup', () => { saveSelection(); updateFmtStates(); });
-  el.edBody.addEventListener('mouseup', () => { saveSelection(); updateFmtStates(); });
-  el.edBody.addEventListener('touchend', () => { saveSelection(); updateFmtStates(); }, { passive: true });
+  el.edBody.addEventListener('mouseup', () => {
+    const sel = window.getSelection();
+    const curSnap = sel && sel.rangeCount ? snapshotRange(sel.getRangeAt(0)) : null;
+    if (!sameRangeSnapshot(curSnap, lastFmtRange)) clearPendingFmt();
+    saveSelection();
+    updateFmtStates();
+  });
+  el.edBody.addEventListener('touchend', () => {
+    const sel = window.getSelection();
+    const curSnap = sel && sel.rangeCount ? snapshotRange(sel.getRangeAt(0)) : null;
+    if (!sameRangeSnapshot(curSnap, lastFmtRange)) clearPendingFmt();
+    saveSelection();
+    updateFmtStates();
+  }, { passive: true });
   document.addEventListener('selectionchange', () => {
     if (!state.editingId) return;
-    if (selectionInEditor()) { saveSelection(); updateFmtStates(); }
+    if (selectionInEditor()) {
+      const sel = window.getSelection();
+      const curSnap = sel && sel.rangeCount ? snapshotRange(sel.getRangeAt(0)) : null;
+      if (!sameRangeSnapshot(curSnap, lastFmtRange)) clearPendingFmt();
+      saveSelection();
+      updateFmtStates();
+    }
   });
 
   /* Editor flags / close / delete */
